@@ -4,8 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SUPABASE_URL = "https://ckjelibfwkvcfgjnzzge.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNramVsaWJmd2t2Y2Znam56emdlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjQ1MDczMiwiZXhwIjoyMDc4MDI2NzMyfQ.j9UVFFMcwIXacJYLWEaCF87iru-gNf0Uu_-sGbSF4tY"
+SUPABASE_URL = ""
+SUPABASE_KEY = ""
 sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 with open("degrees.json", "r", encoding="utf-8") as f:

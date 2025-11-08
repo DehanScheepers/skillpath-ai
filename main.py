@@ -4,23 +4,29 @@ from fastapi import FastAPI
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import google.generativeai as genai
-from course_routes import router as course_router
 from pydantic import BaseModel
+
+from course_routes import router as course_router
 from ai_recommender import recommend_degrees_from_subjects
 from match_routes import router as match_router
+from routes.programmes import router as prog_router
+from routes.mapping import router as map_router
+from routes.jobs import router as jobs_router
+
+client = genai.configure(api_key="")
+
+SUPABASE_URL = ""
+SUPABASE_KEY = ""
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 load_dotenv()
 
 app = FastAPI(title="SkillPath AI")
 app.include_router(match_router, prefix="/api")
-
-client = genai.configure(api_key="AIzaSyA7ejkpnIirZhh6GyGcem_gKTEk3l8-BJs")
-
-SUPABASE_URL = "https://ckjelibfwkvcfgjnzzge.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNramVsaWJmd2t2Y2Znam56emdlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjQ1MDczMiwiZXhwIjoyMDc4MDI2NzMyfQ.j9UVFFMcwIXacJYLWEaCF87iru-gNf0Uu_-sGbSF4tY"
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-app.include_router(course_router)
+app.include_router(prog_router, prefix="/api")
+app.include_router(map_router, prefix="/api")
+app.include_router(jobs_router, prefix="/api")
+app.include_router(course_router, prefix="/api")
 
 @app.get("/")
 def root():
