@@ -4,52 +4,86 @@ import os, json
 from supabase import create_client
 from dotenv import load_dotenv
 import google.generativeai as genai
-load_dotenv()
+from google.generativeai.types import GenerationConfig  # Import for structured output
+
+# --- Configuration ---
+load_dotenv(override=True)
 
 sb = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.models.get("gemini-1.5")
+
+# Use the recommended GenerativeModel access method
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 router = APIRouter()
 
+# --- Schemas ---
 class StudentProfile(BaseModel):
     name: str | None = None
     subjects: dict  # {"Mathematics": 78, ...}
     interests: list | None = []
+    # ⚠️ CRITICAL FIX: programme_id must be part of the payload
+    programme_id: int
 
+
+# --- API Route ---
 @router.post("/map-student")
 def map_student(profile: StudentProfile):
-    # 1) decide programme skills to compare with — this endpoint expects client to pass programme_id or name
-    # For simplicity here assume client passes programme_id in subjects dict: {"_programme_id": 3, ...}
-    prog_id = profile.subjects.pop("_programme_id", None)
-    if not prog_id:
-        return {"error":"Please include _programme_id key in subjects with programme id."}
+    # Fetch programme skills
+    # Access profile.programme_id is now safe
+    skills = sb.table("programme_skills").select("skill_name").eq("programme_id", profile.programme_id).execute().data
+    skill_names = [s["skill_name"] for s in skills]
 
-    # load programme skills
-    skills = sb.table("programme_skills").select("*").eq("programme_id", prog_id).execute().data
-    # basic mapping: technical skill strength = average of related subject marks if subject keywords match
-    # Build a prompt to let Gemini score student vs skills
     prompt = (
-        f"You are an expert career mapper. A student has these subjects and marks: {profile.subjects}. "
-        f"Programme id {prog_id} has skills: {', '.join([s['skill_name'] for s in skills])}. "
-        "For each skill, produce a JSON object with 'skill', 'estimated_strength' (0-1) and short reason. "
-        "Strength should be based on how the subjects relate to the skill (e.g., Math supports 'modelling'). "
-        "Return JSON array."
+        f"You are an expert career mapper. Use the provided subjects/marks and programme skills to estimate student strength in each skill.\n"
+        f"Student subjects & marks: {profile.subjects}\n"
+        f"Programme skills: {skill_names}\n\nFor each skill, return a JSON array like: "
+        "[{\"skill\":\"...\",\"estimated_strength\":0.0-1.0,\"reason\":\"...\"}]. "
+        "Estimated_strength should be based on the subjects/marks where relevant.\nReturn JSON only."
     )
-    resp = model.generate_text(prompt=prompt, max_output_tokens=400)
-    try:
-        skill_map = json.loads(resp.text.strip())
-    except Exception:
-        # fallback simple mapping: set all skills to 0.5
-        skill_map = [{"skill":s["skill_name"], "estimated_strength":0.5, "reason":"fallback"} for s in skills]
 
-    # optionally store student and map
-    student = sb.table("student_profiles").insert({"name": profile.name}).execute().data[0]
-    for sm in skill_map:
-        sb.table("student_skill_map").insert({
-            "student_id": student["id"],
-            "programme_id": prog_id,
-            "skill_name": sm["skill"],
-            "score": sm["estimated_strength"]
-        }).execute()
-    return {"student_id": student["id"], "skill_map": skill_map}
+    # Use GenerationConfig for modern API call and guaranteed JSON
+    config = GenerationConfig(
+        max_output_tokens=400,
+        response_mime_type="application/json"  # Guarantee JSON
+    )
+
+    try:
+        # Use the recommended generate_content method
+        response = model.generate_content(prompt, config=config)
+        skill_map = json.loads(response.text.strip())
+    except Exception as e:
+        print(f"Error parsing JSON from Gemini: {e}")
+        # fallback: uniform medium strength
+        skill_map = [{"skill": s, "estimated_strength": 0.5, "reason": "fallback"} for s in skill_names]
+
+    # --- Supabase Inserts ---
+
+    # 1. Insert student and safely retrieve ID
+    student_data = sb.table("student_profiles").insert({"name": profile.name}).execute().data
+
+    if not student_data:
+        # Handle case where student insert failed (e.g., raise HTTP exception)
+        return {"error": "Failed to create student profile"}, 500
+
+    student_id = student_data[0]["id"]
+
+    # 2. Prepare all skill map links for a single bulk insert (OPTIMIZATION)
+    skill_map_links = []
+    for item in skill_map:
+        skill_map_links.append({
+            "student_id": student_id,
+            "programme_id": profile.programme_id,
+            "skill_name": item["skill"],
+            "score": item["estimated_strength"]
+        })
+
+    # 3. Perform the bulk insert
+    if skill_map_links:
+        try:
+            # Single insert call for all N skills is highly efficient
+            sb.table("student_skill_map").insert(skill_map_links).execute()
+        except Exception as e:
+            print(f"Error bulk inserting student skill map: {e}")
+
+    return {"student_id": student_id, "skill_map": skill_map}

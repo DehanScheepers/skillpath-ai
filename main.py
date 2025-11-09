@@ -1,32 +1,27 @@
 import os
-
 from fastapi import FastAPI
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import google.generativeai as genai
 from pydantic import BaseModel
 
-from course_routes import router as course_router
-from ai_recommender import recommend_degrees_from_subjects
-from match_routes import router as match_router
-from routes.programmes import router as prog_router
-from routes.mapping import router as map_router
+from routes.programmes import router as programmes_router
+from routes.mapping import router as mapping_router
 from routes.jobs import router as jobs_router
 
-client = genai.configure(api_key="")
+load_dotenv(override=True)
 
-SUPABASE_URL = ""
-SUPABASE_KEY = ""
+api_key = os.getenv("GEMINI_API_KEY")
+client = genai.configure(api_key=api_key)
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-load_dotenv()
-
 app = FastAPI(title="SkillPath AI")
-app.include_router(match_router, prefix="/api")
-app.include_router(prog_router, prefix="/api")
-app.include_router(map_router, prefix="/api")
+app.include_router(programmes_router, prefix="/api")
+app.include_router(mapping_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
-app.include_router(course_router, prefix="/api")
 
 @app.get("/")
 def root():
@@ -65,8 +60,3 @@ async def recommend_courses(data: SubjectInput):
 
 class SubjectsInput(BaseModel):
     subjects: dict
-
-@app.post("/recommend-degrees-ai")
-async def recommend_degrees(data: SubjectsInput):
-    recommendations = recommend_degrees_from_subjects(data.subjects)
-    return {"recommendations": recommendations}

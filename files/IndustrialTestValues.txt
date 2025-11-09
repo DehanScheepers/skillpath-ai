@@ -1,0 +1,143 @@
+[
+    {
+        "programme": "BEng Industrial Engineering",
+        "faculty": "Engineering",
+        "modules": [
+            {
+                "code": "AM124",
+                "title": "Applied Mathematics B 124",
+                "description": "Covers elementary concepts of differential calculus (limit, derivative, application) and integration (substitution, parts, partial fractions).It also introduces elementary concepts of vector algebra."
+            },
+            {
+                "code": "EC123",
+                "title": "Engineering Chemistry 123",
+                "description": "Topics include stoichiometry, gas laws, thermochemistry, and chemical equilibrium. It also covers electrochemistry, chemical kinetics, and an introduction to organic chemistry."
+            },
+            {
+                "code": "EM115",
+                "title": "Engineering Mathematics 115",
+                "description": "The module covers a variety of mathematical topics including functions, limits, derivatives, integrals, and an introduction to differential equations.It is foundational for engineering analysis."
+            },
+            {
+                "code": "EP113",
+                "title": "Engineering Physics 113",
+                "description": "This module focuses on mechanics, including kinematics, dynamics, work, energy, and momentum.It provides a foundation in the physical principles relevant to engineering."
+            },
+            {
+                "code": "ING113",
+                "title": "Intercultural Communication (Eng) 113",
+                "description": "The module covers principles of effective communication in engineering contexts, including technical writing, presentations, and working in diverse teams."
+            },
+            {
+                "code": "IMT123",
+                "title": "Engineering Drawings 123",
+                "description": "This module covers the principles of technical drawing, including orthographic projections, isometric drawing, sections, and dimensioning.It introduces computer-aided drawing (CAD) software."
+            },
+            {
+                "code": "EVM144",
+                "title": "Engineering Mathematics 144",
+                "description": "This module covers advanced differential and integral calculus, including multi-variable calculus, vector fields, and line integrals.It applies mathematical techniques to solve engineering problems."
+            },
+            {
+                "code": "FWT143",
+                "title": "Engineering Physics 143",
+                "description": "This module covers electricity, magnetism, and optics. [cite_start]Topics include electric fields, circuits, magnetic fields, electromagnetic induction, and the properties of light."
+            },
+            {
+                "code": "ING143",
+                "title": "Intercultural Communication (Eng) 143",
+                "description": "This module continues the development of professional communication skills, with a focus on report writing, argumentation, and ethical considerations in engineering communication."
+            },
+            {
+                "code": "IAP144",
+                "title": "Introductory Programming 144",
+                "description": "This module introduces fundamental programming concepts, data structures, algorithms, and problem-solving using a high-level programming language.It focuses on applications relevant to engineering."
+            },
+            {
+                "code": "EVM155",
+                "title": "Engineering Mathematics 155",
+                "description": "This module covers linear algebra, including vector spaces, eigenvalues, eigenvectors, and matrix operations, along with an introduction to Fourier series and Laplace transforms."
+            },
+            {
+                "code": "IMT153",
+                "title": "Engineering Drawings 153",
+                "description": "This module builds on the basic principles of technical drawing and CAD, focusing on more complex assemblies, tolerancing, and geometric dimensioning and tolerancing (GD&T)."
+            },
+            {
+                "code": "INL152",
+                "title": "Introduction to Industrial Engineering",
+                "description": "Introduction to the industrial engineering profession, covering systems thinking, process improvement, and the application of engineering principles to business problems. Includes an overview of data analysis and decision-making tools."
+            },
+            {
+                "code": "APL224",
+                "title": "Applied Mathematics B224",
+                "description": "Topics in linear algebra, including systems of linear equations, matrix inversion, eigenvalues and eigenvectors, and matrix diagonalisation. It also covers vector spaces, linear transformations, and the method of least squares."
+            },
+            {
+                "code": "INL214",
+                "title": "Operations Research I",
+                "description": "This module covers the formulation and solution of linear programming (LP) models, including the Simplex method and duality theory. It also introduces sensitivity analysis and basic network models."
+            },
+            {
+                "code": "EVM214",
+                "title": "Engineering Mathematics 214",
+                "description": "This module covers differential equations, Laplace transforms, Fourier series, and an introduction to numerical methods."
+            },
+            {
+                "code": "INL224",
+                "title": "Engineering Statistics",
+                "description": "This module covers probability theory, discrete and continuous random variables, and sampling distributions.It introduces statistical inference, including hypothesis testing and confidence intervals for means and proportions."
+            },
+            {
+                "code": "PM314",
+                "title": "Production Management",
+                "description": "The module covers the planning, control, and improvement of production and service systems.Topics include forecasting, aggregate planning, inventory management, and lean production."
+            },
+            {
+                "code": "INL324",
+                "title": "Engineering Economics",
+                "description": "This module covers the principles of engineering economic analysis, including time value of money, cash flow diagrams, and methods for evaluating investments and projects (e.g., present worth, annual worth, rate of return). "
+            },
+            {
+                "code": "INL344",
+                "title": "Facilities Planning and Layout",
+                "description": "The module covers the design and analysis of efficient facility layouts, including material handling system design, location analysis, and space requirements determination."
+            },
+            {
+                "code": "INL354",
+                "title": "Work Design and Ergonomics",
+                "description": "This module covers the analysis and design of work systems to improve productivity, efficiency, and worker well-being.Topics include time study, work sampling, and fundamental principles of ergonomics."
+            },
+            {
+                "code": "INL414",
+                "title": "Simulation Modelling",
+                "description": "This module covers the principles and application of discrete-event simulation for the analysis and design of complex systems. [cite_start]It includes random number generation, input/output analysis, and model validation."
+            },
+            {
+                "code": "INL424",
+                "title": "Decision Analysis",
+                "description": "The module covers the formulation and solution of decision problems under uncertainty, including utility theory, decision trees, and value of information.It also introduces multi-criteria decision making."
+            },
+            {
+                "code": "INL442",
+                "title": "Quality Management",
+                "description": "This module covers the fundamental principles of Total Quality Management (TQM), statistical process control (SPC) charts, and acceptance sampling.It introduces process capability analysis and quality improvement tools. "
+            },
+            {
+                "code": "INL444",
+                "title": "Final Year Industrial Engineering Project",
+                "description": "The final year capstone project requires independent execution of a theoretical and/or practical design and/or investigation in the field of industrial engineering.The project culminates in formal oral presentations and the submission of a final comprehensive report."
+            },
+            {
+                "code": "INL422",
+                "title": "Systems Engineering 422",
+                "description": "Introduction to systems engineering principles, including requirements engineering, system architecture, and verification and validation."
+            },
+            {
+                "code": "INL446",
+                "title": "Supply Chain Management 446",
+                "description": "Principles of supply chain management, including logistics, procurement, inventory control, and network design. "
+            }
+        ]
+    }
+]
