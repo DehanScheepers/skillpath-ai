@@ -220,3 +220,58 @@ def get_faculties():
 def get_programmes_by_faculties(faculties_id: int):
     res = supabase.table("programmes").select("*").eq("faculties_id", faculties_id).execute()
     return {"programmes": res.data}
+
+@app.post("/api/programmes/{programme_id}/generate-knowledge-graph")
+def generate_knowledge_graph(programme_id: int):
+    # Step 1: Get all skills for this programme
+    skills_res = supabase.table("skills").select("id, name, category").eq("programme_id", programme_id).execute()
+    if not skills_res.data:
+        return {"error": "No skills found"}
+
+    skills = [s["name"] for s in skills_res.data]
+
+    # Step 2: Ask Gemini to find relationships
+    prompt = f"""
+    You are an expert in knowledge graph construction.
+    Given this list of skills from an engineering degree:
+    {skills}
+
+    Identify meaningful relationships between these skills.
+    Examples of relationship types:
+    - "requires" (skill A requires skill B)
+    - "builds_on" (skill A builds on skill B)
+    - "complements" (skill A complements skill B)
+    - "applies_to" (skill A applies skill B in context)
+
+    Return the result in JSON:
+    {{
+      "relations": [
+        {{"source": "Skill A", "target": "Skill B", "relation": "requires"}},
+        ...
+      ]
+    }}
+    """
+
+    response = model.generate_content(prompt)
+    import json, re
+    try:
+        data = json.loads(response.text.strip())
+    except:
+        json_str = re.search(r"\{.*\}", response.text, re.S)
+        data = json.loads(json_str.group(0)) if json_str else {"relations": []}
+
+    # Step 3: Store relationships in Supabase
+    for r in data.get("relations", []):
+        supabase.table("skill_relations").insert({
+            "programme_id": programme_id,
+            "source": r["source"],
+            "target": r["target"],
+            "relation": r["relation"]
+        }).execute()
+
+    return {"programme_id": programme_id, "relations": data.get("relations", [])}
+
+@app.get("/api/programmes/{programme_id}/relations")
+def get_programme_relations(programme_id: int):
+    res = supabase.table("skill_relations").select("*").eq("programme_id", programme_id).execute()
+    return {"relations": res.data}
