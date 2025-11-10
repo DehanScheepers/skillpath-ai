@@ -46,6 +46,13 @@ def get_programmes():
     res = supabase.table("programmes").select("*").execute()
     return {"programmes": res.data}
 
+@app.get("/api/programmes/{programme_id}")
+def get_programme(programme_id: int):
+    res = supabase.table("programmes").select("*").eq("id", programme_id).execute()
+    if not res.data:
+        return {"error": "Programme not found"}
+    return {"programme": res.data[0]}
+
 @app.get("/api/programmes/{programme_id}/modules")
 def get_programme_modules(programme_id: int):
     res = supabase.table("modules").select("*").eq("programme_id", programme_id).execute()
