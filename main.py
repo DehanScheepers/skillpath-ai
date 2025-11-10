@@ -6,9 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-from routes.programmes import router as programmes_router
-from routes.mapping import router as mapping_router
-from routes.jobs import router as jobs_router
+#from routes.programmes import router as programmes_router
+#from routes.mapping import router as mapping_router
+#from routes.jobs import router as jobs_router
 
 load_dotenv(override=True)
 
