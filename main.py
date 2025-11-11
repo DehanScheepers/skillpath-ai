@@ -1,11 +1,14 @@
 import os
 import google.generativeai as genai
+import json
+import time
 
-from fastapi import FastAPI
+from datetime import datetime, timedelta
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 from dotenv import load_dotenv
-
+from pydantic import BaseModel
 
 from routes.generate import router as generate_router
 from routes.programme_graph import router as graph_router
@@ -276,3 +279,159 @@ def generate_knowledge_graph(programme_id: int):
 def get_programme_relations(programme_id: int):
     res = supabase.table("skill_relations").select("*").eq("programme_id", programme_id).execute()
     return {"relations": res.data}
+
+class RelationResponse(BaseModel):
+    source: str
+    target: str
+    relation: str
+    confidence: float = 0.8
+
+# --- Rate limit globals ---
+LAST_CALL_TIME = datetime.min
+CALL_INTERVAL = 5  # seconds between Gemini calls (~12 RPM max)
+
+def wait_for_slot():
+    """Simple rate limiter (max ~12 requests/minute)."""
+    global LAST_CALL_TIME
+    now = datetime.now()
+    delta = (now - LAST_CALL_TIME).total_seconds()
+    if delta < CALL_INTERVAL:
+        time.sleep(CALL_INTERVAL - delta)
+    LAST_CALL_TIME = datetime.now()
+
+# --- Gemini cached request helper ---
+def generate_with_cache(prompt: str, cache_key: str, model_name="gemini-2.0-flash"):
+    """Check Supabase cache before calling Gemini."""
+    cache = (
+        supabase.table("ai_cache")
+        .select("raw_response")
+        .eq("prompt", cache_key)
+        .limit(1)
+        .execute()
+    )
+    if cache.data:
+        print(f"✅ Cache hit for {cache_key}")
+        return cache.data[0]["raw_response"]
+
+    wait_for_slot()
+
+    try:
+        print(f"🤖 Calling Gemini for {cache_key} ...")
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            parsed = {"raw_text": text}
+
+        supabase.table("ai_cache").insert({
+            "model_name": model_name,
+            "prompt": cache_key,
+            "raw_response": parsed,
+        }).execute()
+
+        return parsed
+    except Exception as e:
+        print("❌ Gemini error:", str(e))
+        return {"error": str(e)}
+
+# --- Route ---
+@app.post("/api/programmes/{programme_id}/generate-relations")
+async def generate_programme_relations(programme_id: int):
+    print(f"⚙️ Generating relations for programme {programme_id}...")
+
+    try:
+        # 1️⃣ Fetch skills
+        skills_resp = supabase.table("skills").select("id, name").eq("programme_id", programme_id).execute()
+        skills = skills_resp.data
+        print(f"🧩 Found {len(skills)} skills.")
+
+        if not skills:
+            raise HTTPException(status_code=404, detail="No skills found for this programme")
+
+        skill_names = [s["name"] for s in skills]
+
+        # 2️⃣ Prepare prompt
+        prompt = f"""
+        You are an academic AI assistant.
+        Given these programme skills:
+        {skill_names}
+
+        Create logical relationships between them.
+        Use only this JSON structure:
+        [
+          {{ "source": "Optimization", "target": "Decision Analysis", "relation": "builds_on" }},
+          {{ "source": "Systems Thinking", "target": "Operations Research", "relation": "complements" }}
+        ]
+        """
+
+        cache_key = f"relations_programme_{programme_id}"
+
+        # 3️⃣ Call Gemini (cached)
+        print(f"🧠 Sending prompt to Gemini (cache_key={cache_key})...")
+        ai_result = generate_with_cache(prompt, cache_key)
+        print(f"📩 Gemini returned: {type(ai_result)}")
+
+        # 4️⃣ Parse relations
+        relations = []
+        if isinstance(ai_result, list):
+            relations = ai_result
+        elif isinstance(ai_result, dict) and "relations" in ai_result:
+            relations = ai_result["relations"]
+        elif isinstance(ai_result, dict) and "raw_text" in ai_result:
+            try:
+                relations = json.loads(ai_result["raw_text"])
+            except Exception as e:
+                print("⚠️ JSON parse error from raw_text:", str(e))
+                relations = []
+
+        if not relations:
+            raise HTTPException(status_code=500, detail="No valid relations returned by Gemini")
+
+        print(f"✅ Parsed {len(relations)} relations from Gemini.")
+
+        # 5️⃣ Save new relations (avoid duplicates)
+        added_relations = []
+        for rel in relations:
+            src = next((s for s in skills if s["name"] == rel.get("source")), None)
+            tgt = next((s for s in skills if s["name"] == rel.get("target")), None)
+            if not src or not tgt:
+                continue
+
+            existing = supabase.table("skill_relations") \
+                .select("id") \
+                .eq("programme_id", programme_id) \
+                .eq("source_skill_id", src["id"]) \
+                .eq("target_skill_id", tgt["id"]) \
+                .execute()
+
+            if existing.data:
+                continue
+
+            supabase.table("skill_relations").insert({
+                "programme_id": programme_id,
+                "source_skill_id": src["id"],
+                "target_skill_id": tgt["id"],
+                "relation": rel.get("relation", "related_to"),
+                "confidence": rel.get("confidence", 0.8)
+            }).execute()
+
+            added_relations.append(rel)
+
+        print(f"💾 Added {len(added_relations)} new relations to database.")
+
+        return {
+            "programme_id": programme_id,
+            "relations_added": len(added_relations),
+            "relations": added_relations
+        }
+
+    except HTTPException as e:
+        print(f"🚫 HTTP Error: {e.detail}")
+        raise e
+    except Exception as e:
+        print(f"❌ Unexpected error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
