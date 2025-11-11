@@ -6,9 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-#from routes.programmes import router as programmes_router
-#from routes.mapping import router as mapping_router
-#from routes.jobs import router as jobs_router
+
+from routes.generate import router as generate_router
+from routes.programme_graph import router as graph_router
 
 load_dotenv(override=True)
 
@@ -21,9 +21,6 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI(title="SkillPath AI")
-#app.include_router(programmes_router, prefix="/api/old")
-#app.include_router(mapping_router, prefix="/api/old")
-#app.include_router(jobs_router, prefix="/api/old")
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,6 +28,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register routes
+app.include_router(generate_router, prefix="/api")
+app.include_router(graph_router, prefix="/api")
 
 @app.get("/")
 def root():
