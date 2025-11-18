@@ -4,3 +4,5 @@ asyncpg
 pydantic
 python-dotenv
 google-generativeai
+neo4j
+supabase
