@@ -1,57 +1,79 @@
-from fastapi import APIRouter
-from database import connect
+from fastapi import APIRouter, Depends, HTTPException
+from supabase import Client
+from database import get_supabase_client
 from clients.gemini_client import generate_json
-from utils.cache import get_cache, set_cache
 
-router = APIRouter(prefix="/api/modules")
+router = APIRouter(prefix="/api/modules", tags=["Modules"])
 
-@router.post("/{module_id}/generate-skills")
-async def generate_module_skills(module_id: int):
-    conn = await connect()
 
-    module = await conn.fetchrow(
-        "SELECT m.id, m.name, p.id AS programme_id, p.name AS programme_name "
-        "FROM modules m JOIN programmes p ON m.programme_id = p.id "
-        "WHERE m.id=$1", module_id
-    )
+@router.post("/{module_id}/process")
+async def process_module(
+        module_id: int,
+        client: Client = Depends(get_supabase_client)
+):
+    # 1. Fetch Module Details from Supabase
+    try:
+        # Fetch module and the name of the degree it belongs to
+        response = await client.table('modules') \
+            .select('id, name, description, degree_id(id, name)') \
+            .eq('id', module_id) \
+            .single() \
+            .execute()
 
-    cache_key = f"skills_module_{module_id}"
-    cached = await get_cache(conn, cache_key)
-    if cached:
-        return {"cached": True, "skills": cached}
+        module_data = response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Supabase Read Error: {e}")
 
+    if not module_data:
+        raise HTTPException(status_code=404, detail="Module not found")
+
+    # Unwrap nested degree data
+    degree = module_data.pop('degree_id')  # remove degree_id obj from module_data
+
+    # 2. Construct Prompt for Gemini
     prompt = f"""
-    Extract all key technical and soft skills taught in the module:
-    Module name: {module["name"]}
-    Programme: {module["programme_name"]}
+    You are a curriculum analyst. Extract key skills from this academic module.
 
-    Format as JSON:
+    Module Name: {module_data['name']}
+    Degree Context: {degree['name']}
+    Description: {module_data.get('description', 'No description')}
+
+    Return JSON format:
     {{
         "skills": [
-            {{
-                "name": "",
-                "category": "technical | soft",
-                "description": ""
-            }}
+            {{ "name": "Skill Name", "category": "Technical" or "Soft", "description": "Brief reason" }}
         ]
     }}
     """
 
-    data = await generate_json(prompt)
+    # 3. Call AI
+    ai_result = await generate_json(prompt)
 
-    for s in data["skills"]:
-        skill = await conn.fetchrow("""
-            INSERT INTO skills (programme_id, module_id, name, category, description)
-            VALUES ($1,$2,$3,$4,$5)
-            ON CONFLICT (programme_id, module_id, name) DO UPDATE SET category=$4, description=$5
-            RETURNING id
-        """, module["programme_id"], module_id, s["name"], s["category"], s["description"])
+    if not ai_result or "skills" not in ai_result:
+        return {"message": "AI returned no skills", "data": []}
 
-        await conn.execute(
-            "INSERT INTO module_skills (module_id, skill_id) VALUES ($1,$2) "
-            "ON CONFLICT DO NOTHING",
-            module_id, skill["id"]
-        )
+    # 4. Prepare Data for Database Insert
+    skills_to_insert = []
+    for skill in ai_result['skills']:
+        skills_to_insert.append({
+            "degree_id": degree['id'],
+            "module_id": module_id,
+            "name": skill['name'],
+            "category": skill['category'],
+            "description": skill.get('description', '')
+        })
 
-    await set_cache(conn, cache_key, data)
-    return data
+    # 5. Save to Supabase (Upsert to avoid duplicates)
+    try:
+        await client.table('extracted_skills') \
+            .upsert(skills_to_insert, on_conflict='degree_id, module_id, name') \
+            .execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Supabase Write Error: {e}")
+
+    return {
+        "status": "success",
+        "module": module_data['name'],
+        "skills_extracted": len(skills_to_insert),
+        "skills": skills_to_insert
+    }
