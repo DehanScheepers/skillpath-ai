@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from supabase import acreate_client, Client
 from google import genai
 from routers import modules
-from routers import analysis_endpoints as analysis_router
+from routers import analysis_endpoints
 from routers import degrees as degree_router
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -60,8 +60,8 @@ app.add_middleware(
 )
 
 app.include_router(modules.router)
-app.include_router(analysis_router, prefix="/api")
-app.include_router(degree_router)
+app.include_router(analysis_endpoints.router, prefix="/api")
+app.include_router(degree_router.router)
 
 @app.get("/")
 def read_root():
