@@ -1,11 +1,12 @@
 import os
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from supabase import acreate_client, Client
-from neo4j import GraphDatabase
 from google import genai
-from routers import modules, graph
+from routers import modules
+from routers import analysis_endpoints as analysis_router
+from routers import degrees as degree_router
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
@@ -59,7 +60,8 @@ app.add_middleware(
 )
 
 app.include_router(modules.router)
-app.include_router(graph.router)
+app.include_router(analysis_router, prefix="/api")
+app.include_router(degree_router)
 
 @app.get("/")
 def read_root():
