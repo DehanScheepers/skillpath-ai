@@ -7,6 +7,7 @@ from google import genai
 from routers import modules
 from routers import analysis_endpoints
 from routers import degrees as degree_router
+from routers import grapgh
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
@@ -14,6 +15,7 @@ load_dotenv()
 SUPABASE_CLIENT: Client = None
 GEMINI_CLIENT = None
 
+##uvicorn main:app --reload
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,7 +48,6 @@ async def lifespan(app: FastAPI):
     # Supabase and Gemini clients usually don't require an explicit close
     print("--- 🔴 Application Shutdown Complete ---")
 
-
 # Pass the lifespan function to the FastAPI app constructor
 app = FastAPI(title="Skillpath", version="1.0.0", lifespan=lifespan)
 
@@ -62,6 +63,8 @@ app.add_middleware(
 app.include_router(modules.router)
 app.include_router(analysis_endpoints.router, prefix="/api")
 app.include_router(degree_router.router)
+
+app.include_router(grapgh.router)
 
 @app.get("/")
 def read_root():
