@@ -61,11 +61,8 @@ app.add_middleware(
 )
 
 app.include_router(modules.router)
-app.include_router(analysis_endpoints.router, prefix="/api")
-app.include_router(degree_router.router)
-
+app.include_router(analysis_endpoints.router)
 app.include_router(grapgh.router)
-
 @app.get("/")
 def read_root():
     """Simple health check endpoint."""
